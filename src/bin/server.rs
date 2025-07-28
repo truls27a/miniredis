@@ -1,3 +1,6 @@
+use miniredis::server::Server;
+
 fn main() {
-    println!("Hello, world from server!");
+    let server = Server::new("127.0.0.1:6379");
+    server.run();
 }

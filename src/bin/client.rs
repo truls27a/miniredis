@@ -1,3 +1,6 @@
+use miniredis::client::Client;
+
 fn main() {
-    println!("Hello, world from client!");
+    let client = Client::new("127.0.0.1:6379");
+    client.run();
 }
