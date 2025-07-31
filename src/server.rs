@@ -78,7 +78,7 @@ impl Server {
         println!("MiniRedis is running on {}", self.address);
 
         for stream in listener.incoming() {
-            let stream = stream.map_err(|_| MiniRedisError::StreamNotConnected)?;
+            let stream = stream.map_err(|_| MiniRedisError::StreamNotConnected{address: self.address.clone()})?;
             let store = Arc::clone(&self.store);
             thread::spawn(move || Self::handle_client(stream, store));
         }
@@ -182,7 +182,7 @@ impl Server {
     ) -> Result<String, MiniRedisError> {
         let key = match args.get(0) {
             Some(key) => key,
-            None => return Err(MiniRedisError::InvalidArguments),
+            None => return Err(MiniRedisError::InvalidArguments{arguments: args}),
         };
         let value: Option<&String> = args.get(1);
 
@@ -195,7 +195,7 @@ impl Server {
             "SET" => {
                 match value {
                     Some(value) => store.set(key, value)?,
-                    None => return Err(MiniRedisError::InvalidArguments),
+                    None => return Err(MiniRedisError::InvalidArguments{arguments: args}),
                 };
                 Ok("OK".to_string())
             }
@@ -203,7 +203,7 @@ impl Server {
                 store.del(key)?;
                 Ok("OK".to_string())
             }
-            _ => Err(MiniRedisError::InvalidCommand),
+            _ => Err(MiniRedisError::InvalidCommand{command: command.to_string()}),
         }
     }
 }

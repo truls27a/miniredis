@@ -63,7 +63,7 @@ impl Client {
     /// client.run();
     /// ```
     pub fn run(&self) -> Result<(), MiniRedisError> {
-        let mut stream = TcpStream::connect(&self.address).map_err(|_| MiniRedisError::StreamNotConnected)?;
+        let mut stream = TcpStream::connect(&self.address).map_err(|_| MiniRedisError::StreamNotConnected{address: self.address.clone()})?;
         let mut reader = BufReader::new(stream.try_clone().map_err(|_| MiniRedisError::StreamClosed)?);
 
         println!("Connected to server at {}", self.address);

@@ -5,9 +5,9 @@ pub enum MiniRedisError {
     StoreLocked,
 
     /// The command is invalid.
-    InvalidCommand,
+    InvalidCommand{command: String},
     /// The arguments are invalid.
-    InvalidArguments,
+    InvalidArguments{arguments: Vec<String>},
 
     /// The stream is closed.
     StreamClosed,
@@ -16,10 +16,10 @@ pub enum MiniRedisError {
     /// The stream is not writable.
     StreamNotWritable,
     /// The stream is not connected.
-    StreamNotConnected,
+    StreamNotConnected{address: String},
     /// The stream is not flushed.
     StreamNotFlushed,
-    
+
     /// The stream is not accepted.
     AddressNotBound,
 }
@@ -36,15 +36,15 @@ impl std::fmt::Display for MiniRedisError {
     /// If the error cannot be formatted, it will return an error.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MiniRedisError::StoreLocked => write!(f, "The key value store is locked."),
-            MiniRedisError::InvalidCommand => write!(f, "The command is invalid."),
-            MiniRedisError::InvalidArguments => write!(f, "The arguments are invalid."),
+            MiniRedisError::StoreLocked => write!(f, "Could not access the key value store as it is locked."),
+            MiniRedisError::InvalidCommand{command} => write!(f, "Invalid command: {}.", command),
+            MiniRedisError::InvalidArguments{arguments} => write!(f, "Invalid arguments: {:?}.", arguments),
             MiniRedisError::StreamClosed => write!(f, "The stream is closed."),
-            MiniRedisError::StreamNotReadable => write!(f, "The stream is not readable."),
-            MiniRedisError::StreamNotWritable => write!(f, "The stream is not writable."),
-            MiniRedisError::StreamNotConnected => write!(f, "The stream is not connected."),
-            MiniRedisError::AddressNotBound => write!(f, "The address is not bound."),
-            MiniRedisError::StreamNotFlushed => write!(f, "The stream is not flushed."),
+            MiniRedisError::StreamNotReadable => write!(f, "Could not read from the stream."),
+            MiniRedisError::StreamNotWritable => write!(f, "Could not write to the stream."),
+            MiniRedisError::StreamNotConnected{address} => write!(f, "Could not connect to the stream at {}.", address),
+            MiniRedisError::AddressNotBound => write!(f, "Could not bind to the address."),
+            MiniRedisError::StreamNotFlushed => write!(f, "Could not flush the stream."),
         }
     }
 }
