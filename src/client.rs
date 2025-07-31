@@ -25,10 +25,11 @@ impl Client {
     /// 
     /// # Examples
     /// 
-    /// ```rust
+    /// ```rust,no_run
     /// use miniredis::client::Client;
     /// 
     /// let client = Client::new("127.0.0.1:6379");
+    /// client.run();
     /// ```
     pub fn new(address: &str) -> Self {
         Self { address: address.to_string() }
@@ -38,7 +39,7 @@ impl Client {
     /// 
     /// # Examples
     /// 
-    /// ```rust
+    /// ```rust,no_run
     /// use miniredis::client::Client;
     /// 
     /// let client = Client::new("127.0.0.1:6379");

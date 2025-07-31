@@ -10,7 +10,7 @@ use std::{
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// use miniredis::server::Server;
 ///
 /// let server = Server::new("127.0.0.1:6379");
@@ -50,7 +50,7 @@ impl Server {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```rust, no_run
     /// use miniredis::server::Server;
     ///
     /// let server = Server::new("127.0.0.1:6379");
@@ -104,8 +104,8 @@ impl Server {
     /// # Returns
     ///
     /// A optional tuple containing the command and its arguments. If the command is empty or the line is empty, None is returned.
-    fn parse_command(
-        reader: &mut BufReader<TcpStream>,
+    fn parse_command<R: BufRead>(
+        reader: &mut R,
         line: &mut String,
     ) -> Option<(String, Vec<String>)> {
         line.clear();
@@ -157,5 +157,222 @@ impl Server {
             }
             _ => "ERR unknown command".to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_creates_server_with_address() {
+        let address = "127.0.0.1:0";
+        let server = Server::new(address);
+        assert_eq!(address, server.address);
+    }
+
+    #[test]
+    fn new_creates_server_with_empty_store() {
+        let server = Server::new("127.0.0.1:0");
+        assert!(server.store.get("nonexistent_key").is_none());
+    }
+
+    #[test]
+    fn parse_command_parses_get_command() {
+        let stream = create_mock_stream("GET mykey\n");
+        let mut reader = BufReader::new(stream);
+        let mut line = String::new();
+
+        let result = Server::parse_command(&mut reader, &mut line);
+        assert_eq!(Some(("GET".to_string(), vec!["mykey".to_string()])), result);
+    }
+
+    #[test]
+    fn parse_command_parses_set_command() {
+        let stream = create_mock_stream("SET mykey myvalue\n");
+        let mut reader = BufReader::new(stream);
+        let mut line = String::new();
+
+        let result = Server::parse_command(&mut reader, &mut line);
+        assert_eq!(
+            Some((
+                "SET".to_string(),
+                vec!["mykey".to_string(), "myvalue".to_string()]
+            )),
+            result
+        );
+    }
+
+    #[test]
+    fn parse_command_parses_del_command() {
+        let stream = create_mock_stream("DEL mykey\n");
+        let mut reader = BufReader::new(stream);
+        let mut line = String::new();
+
+        let result = Server::parse_command(&mut reader, &mut line);
+        assert_eq!(Some(("DEL".to_string(), vec!["mykey".to_string()])), result);
+    }
+
+    #[test]
+    fn parse_command_handles_lowercase_commands() {
+        let stream = create_mock_stream("get mykey\n");
+        let mut reader = BufReader::new(stream);
+        let mut line = String::new();
+
+        let result = Server::parse_command(&mut reader, &mut line);
+        assert_eq!(Some(("GET".to_string(), vec!["mykey".to_string()])), result);
+    }
+
+    #[test]
+    fn parse_command_handles_mixed_case_commands() {
+        let stream = create_mock_stream("GeT mykey\n");
+        let mut reader = BufReader::new(stream);
+        let mut line = String::new();
+
+        let result = Server::parse_command(&mut reader, &mut line);
+        assert_eq!(Some(("GET".to_string(), vec!["mykey".to_string()])), result);
+    }
+
+    #[test]
+    fn parse_command_handles_extra_whitespace() {
+        let stream = create_mock_stream("  SET   mykey   myvalue  \n");
+        let mut reader = BufReader::new(stream);
+        let mut line = String::new();
+
+        let result = Server::parse_command(&mut reader, &mut line);
+        assert_eq!(
+            Some((
+                "SET".to_string(),
+                vec!["mykey".to_string(), "myvalue".to_string()]
+            )),
+            result
+        );
+    }
+
+    #[test]
+    fn parse_command_returns_none_for_empty_line() {
+        let stream = create_mock_stream("\n");
+        let mut reader = BufReader::new(stream);
+        let mut line = String::new();
+
+        let result = Server::parse_command(&mut reader, &mut line);
+        assert_eq!(None, result);
+    }
+
+    #[test]
+    fn parse_command_returns_none_for_whitespace_only() {
+        let stream = create_mock_stream("   \n");
+        let mut reader = BufReader::new(stream);
+        let mut line = String::new();
+
+        let result = Server::parse_command(&mut reader, &mut line);
+        assert_eq!(None, result);
+    }
+
+    #[test]
+    fn handle_command_get_returns_value_when_key_exists() {
+        let store = Arc::new(KVStore::new());
+        store.set("testkey", "testvalue");
+
+        let response = Server::handle_command("GET", vec!["testkey".to_string()], &store);
+        assert_eq!("testvalue", response);
+    }
+
+    #[test]
+    fn handle_command_get_returns_nil_when_key_does_not_exist() {
+        let store = Arc::new(KVStore::new());
+
+        let response = Server::handle_command("GET", vec!["nonexistent".to_string()], &store);
+        assert_eq!("nil", response);
+    }
+
+    #[test]
+    fn handle_command_get_returns_error_with_no_arguments() {
+        let store = Arc::new(KVStore::new());
+
+        let response = Server::handle_command("GET", vec![], &store);
+        assert_eq!("ERR wrong number of arguments", response);
+    }
+
+    #[test]
+    fn handle_command_set_stores_value_and_returns_ok() {
+        let store = Arc::new(KVStore::new());
+
+        let response = Server::handle_command(
+            "SET",
+            vec!["testkey".to_string(), "testvalue".to_string()],
+            &store,
+        );
+        assert_eq!("OK", response);
+        assert_eq!(Some("testvalue".to_string()), store.get("testkey"));
+    }
+
+    #[test]
+    fn handle_command_set_overwrites_existing_value() {
+        let store = Arc::new(KVStore::new());
+        store.set("testkey", "oldvalue");
+
+        let response = Server::handle_command(
+            "SET",
+            vec!["testkey".to_string(), "newvalue".to_string()],
+            &store,
+        );
+        assert_eq!("OK", response);
+        assert_eq!(Some("newvalue".to_string()), store.get("testkey"));
+    }
+
+    #[test]
+    fn handle_command_set_returns_error_with_no_value() {
+        let store = Arc::new(KVStore::new());
+
+        let response = Server::handle_command("SET", vec!["testkey".to_string()], &store);
+        assert_eq!("ERR wrong number of arguments for 'set' command", response);
+    }
+
+    #[test]
+    fn handle_command_set_returns_error_with_no_arguments() {
+        let store = Arc::new(KVStore::new());
+
+        let response = Server::handle_command("SET", vec![], &store);
+        assert_eq!("ERR wrong number of arguments", response);
+    }
+
+    #[test]
+    fn handle_command_del_removes_key_and_returns_ok() {
+        let store = Arc::new(KVStore::new());
+        store.set("testkey", "testvalue");
+
+        let response = Server::handle_command("DEL", vec!["testkey".to_string()], &store);
+        assert_eq!("OK", response);
+        assert_eq!(None, store.get("testkey"));
+    }
+
+    #[test]
+    fn handle_command_del_returns_ok_even_if_key_does_not_exist() {
+        let store = Arc::new(KVStore::new());
+
+        let response = Server::handle_command("DEL", vec!["nonexistent".to_string()], &store);
+        assert_eq!("OK", response);
+    }
+
+    #[test]
+    fn handle_command_del_returns_error_with_no_arguments() {
+        let store = Arc::new(KVStore::new());
+
+        let response = Server::handle_command("DEL", vec![], &store);
+        assert_eq!("ERR wrong number of arguments", response);
+    }
+
+    #[test]
+    fn handle_command_returns_error_for_unknown_command() {
+        let store = Arc::new(KVStore::new());
+
+        let response = Server::handle_command("UNKNOWN", vec!["arg".to_string()], &store);
+        assert_eq!("ERR unknown command", response);
+    }
+
+    // Helper function to create a mock stream for testing parse_command
+    fn create_mock_stream(data: &str) -> std::io::Cursor<Vec<u8>> {
+        std::io::Cursor::new(data.as_bytes().to_vec())
     }
 }
