@@ -17,14 +17,23 @@ pub enum MiniRedisError {
     StreamNotWritable,
     /// The stream is not connected.
     StreamNotConnected,
-    /// The stream is not accepted.
-    AddressNotBound,
-
     /// The stream is not flushed.
     StreamNotFlushed,
+    
+    /// The stream is not accepted.
+    AddressNotBound,
 }
 
 impl std::fmt::Display for MiniRedisError {
+    /// Formats the error as a string.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `f` - The formatter to write the error to.
+    /// 
+    /// # Errors
+    /// 
+    /// If the error cannot be formatted, it will return an error.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MiniRedisError::StoreLocked => write!(f, "The key value store is locked."),
