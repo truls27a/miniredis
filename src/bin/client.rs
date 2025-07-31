@@ -2,5 +2,9 @@ use miniredis::client::Client;
 
 fn main() {
     let client = Client::new("127.0.0.1:6379");
-    client.run();
+
+    if let Err(e) = client.run() {
+        eprintln!("Client failed: {:?}", e);
+        std::process::exit(1);
+    }
 }

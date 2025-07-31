@@ -2,5 +2,9 @@ use miniredis::server::Server;
 
 fn main() {
     let server = Server::new("127.0.0.1:6379");
-    server.run();
+
+    if let Err(e) = server.run() {
+        eprintln!("Server failed: {:?}", e);
+        std::process::exit(1);
+    }
 }
