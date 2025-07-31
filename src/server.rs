@@ -83,7 +83,11 @@ impl Server {
 
         loop {
             line.clear();
-            let (command, args) = match Self::parse_command(&mut reader, &mut line) {
+            if reader.read_line(&mut line).unwrap() == 0 {
+                break;
+            }
+
+            let (command, args) = match Self::parse_command(&line) {
                 Some((command, args)) => (command, args),
                 None => continue,
             };
@@ -91,6 +95,7 @@ impl Server {
             let response = Self::handle_command(&command, args, &store);
 
             writer.write_all(response.as_bytes()).unwrap();
+            writer.write_all(b"\n").unwrap();
         }
     }
 
@@ -98,21 +103,12 @@ impl Server {
     ///
     /// # Arguments
     ///
-    /// * `reader` - The reader to read the command from.
     /// * `line` - The line to read the command from.
     ///
     /// # Returns
     ///
     /// A optional tuple containing the command and its arguments. If the command is empty or the line is empty, None is returned.
-    fn parse_command<R: BufRead>(
-        reader: &mut R,
-        line: &mut String,
-    ) -> Option<(String, Vec<String>)> {
-        line.clear();
-        if reader.read_line(line).unwrap() == 0 {
-            return None;
-        }
-
+    fn parse_command(line: &str) -> Option<(String, Vec<String>)> {
         let mut parts = line.split_whitespace();
         let command = match parts.next() {
             Some(command) => command.to_uppercase(),
@@ -139,6 +135,7 @@ impl Server {
             None => return "ERR wrong number of arguments".to_string(),
         };
         let value: Option<&String> = args.get(1);
+
         match command {
             "GET" => match store.get(key) {
                 Some(value) => value,
@@ -179,21 +176,15 @@ mod tests {
 
     #[test]
     fn parse_command_parses_get_command() {
-        let stream = create_mock_stream("GET mykey\n");
-        let mut reader = BufReader::new(stream);
-        let mut line = String::new();
-
-        let result = Server::parse_command(&mut reader, &mut line);
+        let line = "GET mykey\n";
+        let result = Server::parse_command(line);
         assert_eq!(Some(("GET".to_string(), vec!["mykey".to_string()])), result);
     }
 
     #[test]
     fn parse_command_parses_set_command() {
-        let stream = create_mock_stream("SET mykey myvalue\n");
-        let mut reader = BufReader::new(stream);
-        let mut line = String::new();
-
-        let result = Server::parse_command(&mut reader, &mut line);
+        let line = "SET mykey myvalue\n";
+        let result = Server::parse_command(line);
         assert_eq!(
             Some((
                 "SET".to_string(),
@@ -205,41 +196,29 @@ mod tests {
 
     #[test]
     fn parse_command_parses_del_command() {
-        let stream = create_mock_stream("DEL mykey\n");
-        let mut reader = BufReader::new(stream);
-        let mut line = String::new();
-
-        let result = Server::parse_command(&mut reader, &mut line);
+        let line = "DEL mykey\n";
+        let result = Server::parse_command(line);
         assert_eq!(Some(("DEL".to_string(), vec!["mykey".to_string()])), result);
     }
 
     #[test]
     fn parse_command_handles_lowercase_commands() {
-        let stream = create_mock_stream("get mykey\n");
-        let mut reader = BufReader::new(stream);
-        let mut line = String::new();
-
-        let result = Server::parse_command(&mut reader, &mut line);
+        let line = "get mykey\n";
+        let result = Server::parse_command(line);
         assert_eq!(Some(("GET".to_string(), vec!["mykey".to_string()])), result);
     }
 
     #[test]
     fn parse_command_handles_mixed_case_commands() {
-        let stream = create_mock_stream("GeT mykey\n");
-        let mut reader = BufReader::new(stream);
-        let mut line = String::new();
-
-        let result = Server::parse_command(&mut reader, &mut line);
+        let line = "GeT mykey\n";
+        let result = Server::parse_command(line);
         assert_eq!(Some(("GET".to_string(), vec!["mykey".to_string()])), result);
     }
 
     #[test]
     fn parse_command_handles_extra_whitespace() {
-        let stream = create_mock_stream("  SET   mykey   myvalue  \n");
-        let mut reader = BufReader::new(stream);
-        let mut line = String::new();
-
-        let result = Server::parse_command(&mut reader, &mut line);
+        let line = "  SET   mykey   myvalue  \n";
+        let result = Server::parse_command(line);
         assert_eq!(
             Some((
                 "SET".to_string(),
@@ -251,21 +230,15 @@ mod tests {
 
     #[test]
     fn parse_command_returns_none_for_empty_line() {
-        let stream = create_mock_stream("\n");
-        let mut reader = BufReader::new(stream);
-        let mut line = String::new();
-
-        let result = Server::parse_command(&mut reader, &mut line);
+        let line = "\n";
+        let result = Server::parse_command(line);
         assert_eq!(None, result);
     }
 
     #[test]
     fn parse_command_returns_none_for_whitespace_only() {
-        let stream = create_mock_stream("   \n");
-        let mut reader = BufReader::new(stream);
-        let mut line = String::new();
-
-        let result = Server::parse_command(&mut reader, &mut line);
+        let line = "   \n";
+        let result = Server::parse_command(line);
         assert_eq!(None, result);
     }
 
@@ -369,10 +342,5 @@ mod tests {
 
         let response = Server::handle_command("UNKNOWN", vec!["arg".to_string()], &store);
         assert_eq!("ERR unknown command", response);
-    }
-
-    // Helper function to create a mock stream for testing parse_command
-    fn create_mock_stream(data: &str) -> std::io::Cursor<Vec<u8>> {
-        std::io::Cursor::new(data.as_bytes().to_vec())
     }
 }

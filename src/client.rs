@@ -1,3 +1,6 @@
+use std::net::TcpStream;
+use std::io::{self, BufRead, BufReader, Write};
+
 /// A client that connects to a server and sends requests.
 /// 
 /// # Examples
@@ -46,6 +49,47 @@ impl Client {
     /// client.run();
     /// ```
     pub fn run(&self) {
-        todo!("Implement client run");
+        let stream = TcpStream::connect(&self.address).expect("Failed to connect to server");
+        let mut reader = BufReader::new(stream.try_clone().unwrap());
+        let mut writer = stream;
+
+        println!("Connected to server at {}", self.address);
+
+        loop {
+            print!("> ");
+            io::stdout().flush().unwrap();
+
+            let mut input = String::new();
+            if io::stdin().read_line(&mut input).is_err() {
+                println!("Error reading input");
+                continue;
+            }
+
+            let trimmed = input.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            
+            if trimmed == "quit" {
+                break;
+            }
+
+            if let Err(e) = writer.write_all(trimmed.as_bytes()) {
+                println!("Failed to send: {}", e);
+                break;
+            }
+            if let Err(err) = writer.write_all(b"\n") {
+                println!("Failed to send newline: {}", err);
+                break;
+            }
+
+            let mut response = String::new();
+            if reader.read_line(&mut response).is_err() {
+                println!("Error reading response");
+                break;
+            }
+
+            println!("{}", response);
+        }
     }
 }
