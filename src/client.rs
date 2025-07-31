@@ -90,13 +90,28 @@ impl Client {
         }
     }
 
-
+    /// Reads input from the user.
+    /// 
+    /// # Returns
+    /// 
+    /// A string containing the input from the user.
     fn read_input(&self) -> String {
         let mut input = String::new();
         io::stdin().read_line(&mut input).unwrap();
         input
     }
 
+    /// Sends input to the server.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `input` - The input to send to the server.
+    /// * `stream` - The stream to send the input to.
+    /// 
+    /// # Returns
+    /// 
+    /// A result indicating whether the input was sent successfully.
+    /// 
     fn send_input(&self, input: &str, stream: &mut TcpStream) -> Result<(), io::Error> {
         if let Err(e) = stream.write_all(input.as_bytes()) {
             println!("Failed to send: {}", e);
@@ -109,6 +124,16 @@ impl Client {
         Ok(())
     }
 
+    /// Reads a response from the server.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `reader` - The reader to read the response from.
+    /// 
+    /// # Returns
+    /// 
+    /// A result containing the response from the server.
+    /// If the response is empty, an error is returned.
     fn read_response(&self, reader: &mut BufReader<TcpStream>) -> Result<String, io::Error> {
         let mut response = String::new();
         if reader.read_line(&mut response).is_err() {
