@@ -1,5 +1,5 @@
-use crate::kv_store::KVStore;
 use crate::error::MiniRedisError;
+use crate::kv_store::KVStore;
 use std::{
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
@@ -48,15 +48,15 @@ impl Server {
     }
 
     /// Runs the server.
-    /// 
+    ///
     /// Run starts the server and listens for client connections.
     /// When receiving a client connection, it will spawn a new thread.
     /// It will then handle the client messages in a loop.
     /// Each message is parsed and then executed through the key value store,
     /// and the response is written back to the client.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// If the server fails to bind to the address,
     /// read from the stream, or write to the stream, it will panic.
     ///
@@ -69,7 +69,8 @@ impl Server {
     /// server.run();
     /// ```
     pub fn run(&self) -> Result<(), MiniRedisError> {
-        let listener = TcpListener::bind(&self.address).map_err(|_| MiniRedisError::AddressNotBound)?;
+        let listener =
+            TcpListener::bind(&self.address).map_err(|_| MiniRedisError::AddressNotBound)?;
         println!("MiniRedis is running on {}", self.address);
 
         for stream in listener.incoming() {
@@ -90,13 +91,21 @@ impl Server {
     /// * `stream` - The client stream.
     /// * `store` - The shared key-value store.
     fn handle_client(mut stream: TcpStream, store: Arc<KVStore>) -> Result<(), MiniRedisError> {
-        let mut reader = BufReader::new(stream.try_clone().map_err(|_| MiniRedisError::StreamClosed)?);
+        let mut reader = BufReader::new(
+            stream
+                .try_clone()
+                .map_err(|_| MiniRedisError::StreamClosed)?,
+        );
 
         let mut line = String::new();
 
         loop {
             line.clear();
-            if reader.read_line(&mut line).map_err(|_| MiniRedisError::StreamNotReadable)? == 0 {
+            if reader
+                .read_line(&mut line)
+                .map_err(|_| MiniRedisError::StreamNotReadable)?
+                == 0
+            {
                 break;
             }
 
@@ -107,8 +116,12 @@ impl Server {
 
             let response = Self::handle_command(&command, args, &store)?;
 
-            stream.write_all(response.as_bytes()).map_err(|_| MiniRedisError::StreamNotWritable)?;
-            stream.write_all(b"\n").map_err(|_| MiniRedisError::StreamNotWritable)?;
+            stream
+                .write_all(response.as_bytes())
+                .map_err(|_| MiniRedisError::StreamNotWritable)?;
+            stream
+                .write_all(b"\n")
+                .map_err(|_| MiniRedisError::StreamNotWritable)?;
         }
         Ok(())
     }
@@ -145,7 +158,11 @@ impl Server {
     ///
     /// A string containing the response to the command.
     /// Can either be an error message or a response to the command.
-    fn handle_command(command: &str, args: Vec<String>, store: &Arc<KVStore>) -> Result<String, MiniRedisError> {
+    fn handle_command(
+        command: &str,
+        args: Vec<String>,
+        store: &Arc<KVStore>,
+    ) -> Result<String, MiniRedisError> {
         let key = match args.get(0) {
             Some(key) => key,
             None => return Err(MiniRedisError::InvalidArguments),
@@ -316,7 +333,10 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("SET", vec!["testkey".to_string()], &store);
-        assert_eq!("ERR wrong number of arguments for 'set' command", response.unwrap());
+        assert_eq!(
+            "ERR wrong number of arguments for 'set' command",
+            response.unwrap()
+        );
     }
 
     #[test]

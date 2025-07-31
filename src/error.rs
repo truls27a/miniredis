@@ -23,3 +23,19 @@ pub enum MiniRedisError {
     /// The stream is not flushed.
     StreamNotFlushed,
 }
+
+impl std::fmt::Display for MiniRedisError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MiniRedisError::StoreLocked => write!(f, "The key value store is locked."),
+            MiniRedisError::InvalidCommand => write!(f, "The command is invalid."),
+            MiniRedisError::InvalidArguments => write!(f, "The arguments are invalid."),
+            MiniRedisError::StreamClosed => write!(f, "The stream is closed."),
+            MiniRedisError::StreamNotReadable => write!(f, "The stream is not readable."),
+            MiniRedisError::StreamNotWritable => write!(f, "The stream is not writable."),
+            MiniRedisError::StreamNotConnected => write!(f, "The stream is not connected."),
+            MiniRedisError::AddressNotBound => write!(f, "The address is not bound."),
+            MiniRedisError::StreamNotFlushed => write!(f, "The stream is not flushed."),
+        }
+    }
+}
