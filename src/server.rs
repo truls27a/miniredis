@@ -55,10 +55,14 @@ impl Server {
     /// Each message is parsed and then executed through the key value store,
     /// and the response is written back to the client.
     ///
-    /// # Panics
+    /// # Returns
     ///
+    /// A result indicating whether the server was started successfully.
+    /// 
+    /// # Errors
+    /// 
     /// If the server fails to bind to the address,
-    /// read from the stream, or write to the stream, it will panic.
+    /// read from the stream, or write to the stream, it will return an error.
     ///
     /// # Examples
     ///
@@ -85,6 +89,14 @@ impl Server {
     ///
     /// handle_client reads commands from a stream, parses them,
     /// executes them, and writes the responses back to the stream.
+    /// 
+    /// # Returns
+    /// 
+    /// A result indicating whether the client was handled successfully.
+    /// 
+    /// # Errors
+    /// 
+    /// If the stream is not readable, writable, or closed, it will return an error.
     ///
     /// # Arguments
     ///
@@ -158,6 +170,11 @@ impl Server {
     ///
     /// A string containing the response to the command.
     /// Can either be an error message or a response to the command.
+    /// 
+    /// # Errors
+    /// 
+    /// If the command is invalid, the arguments are invalid,
+    /// or the key is not found, it will return an error.
     fn handle_command(
         command: &str,
         args: Vec<String>,

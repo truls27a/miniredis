@@ -49,9 +49,9 @@ impl KVStore {
     /// 
     /// The value associated with the key, or None if the key is not found.
     /// 
-    /// # Panics
+    /// # Errors
     /// 
-    /// Panics if the store is already locked.
+    /// If the store is already locked, it will return an error.
     /// 
     /// # Examples
     /// 
@@ -75,9 +75,9 @@ impl KVStore {
     /// * `key` - The key to set the value for.
     /// * `value` - The value to set.
     /// 
-    /// # Panics
+    /// # Errors
     /// 
-    /// Panics if the store is already locked
+    /// If the store is already locked, it will return an error.
     /// 
     /// # Examples
     /// 
@@ -101,9 +101,9 @@ impl KVStore {
     /// 
     /// * `key` - The key to delete the value for.
     /// 
-    /// # Panics
+    /// # Errors
     /// 
-    /// Panics if the store is already locked.
+    /// If the store is already locked, it will return an error.
     /// 
     /// # Examples
     /// 
@@ -128,9 +128,9 @@ impl KVStore {
     /// 
     /// A mutable reference to the store.
     /// 
-    /// # Panics
+    /// # Errors
     /// 
-    /// Panics if the store is already locked.
+    /// If the store is already locked, it will return an error.
     fn get_store(&self) -> Result<MutexGuard<HashMap<String, String>>, MiniRedisError> {
         self.store.lock().map_err(|_| MiniRedisError::StoreLocked)
     }

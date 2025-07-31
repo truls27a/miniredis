@@ -45,11 +45,15 @@ impl Client {
     /// It will then enter a loop where it reads input from the user,
     /// sends it to the server, and prints the response.
     /// 
-    /// # Panics
+    /// # Returns
+    /// 
+    /// A result indicating whether the client was run successfully.
+    /// 
+    /// # Errors
     /// 
     /// If the client fails to connect to the server,
-    /// read from the stream, or write to the stream, it will panic.
-    ///
+    /// read from the stream, or write to the stream, it will return an error.
+    /// 
     /// # Examples
     /// 
     /// ```rust,no_run
@@ -78,14 +82,9 @@ impl Client {
                 break;
             }
 
-            if let Err(_) = self.send_input(&input, &mut stream) {
-                break;
-            }
+            self.send_input(&input, &mut stream)?;
 
-            let response = match self.read_response(&mut reader) {
-                Ok(response) => response,
-                Err(_) => break,
-            };
+            let response = self.read_response(&mut reader)?;
 
             println!("{}", response);
         }
@@ -98,6 +97,10 @@ impl Client {
     /// # Returns
     /// 
     /// A string containing the input from the user.
+    /// 
+    /// # Errors
+    /// 
+    /// If the input cannot be read, it will return an error.
     fn read_input(&self) -> Result<String, MiniRedisError> {
         let mut input = String::new();
         io::stdin().read_line(&mut input).map_err(|_| MiniRedisError::StreamNotReadable)?;
@@ -115,6 +118,9 @@ impl Client {
     /// 
     /// A result indicating whether the input was sent successfully.
     /// 
+    /// # Errors
+    /// 
+    /// If the input cannot be written to the stream, it will return an error.
     fn send_input(&self, input: &str, stream: &mut TcpStream) -> Result<(), MiniRedisError> {
         stream.write_all(input.as_bytes()).map_err(|_| MiniRedisError::StreamNotWritable)?;
         stream.write_all(b"\n").map_err(|_| MiniRedisError::StreamNotWritable)?;
@@ -131,6 +137,10 @@ impl Client {
     /// 
     /// A result containing the response from the server.
     /// If the response is empty, an error is returned.
+    /// 
+    /// # Errors
+    /// 
+    /// If the response cannot be read, it will return an error.
     fn read_response(&self, reader: &mut BufReader<TcpStream>) -> Result<String, MiniRedisError> {
         let mut response = String::new();
         reader.read_line(&mut response).map_err(|_| MiniRedisError::StreamNotReadable)?;
