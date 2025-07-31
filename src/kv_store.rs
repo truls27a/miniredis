@@ -109,11 +109,11 @@ impl KVStore {
     /// 
     /// let store = KVStore::new();
     /// store.set("key", "value");
-    /// store.delete("key");
+    /// store.del("key");
     /// let value = store.get("key");
     /// assert_eq!(value, None);
     /// ```
-    pub fn delete(&self, key: &str) {
+    pub fn del(&self, key: &str) {
         let mut store = self.get_store();
         store.remove(key);
     }
@@ -175,7 +175,7 @@ mod tests {
     fn get_returns_none_if_deleted() {
         let store = KVStore::new();
         store.set("key", "value");
-        store.delete("key");
+        store.del("key");
         assert_eq!(None, store.get("key"));
     }
 
@@ -190,14 +190,14 @@ mod tests {
     fn delete_deletes_value() {
         let store = KVStore::new();
         store.set("key", "value");
-        store.delete("key");
+        store.del("key");
         assert_eq!(None, store.get("key"));
     }
 
     #[test]
     fn delete_does_nothing_if_key_not_set() {
         let store = KVStore::new();
-        store.delete("key");
+        store.del("key");
         assert_eq!(None, store.get("key"));
     }
 
@@ -205,7 +205,7 @@ mod tests {
     fn delete_does_nothing_if_key_not_set_and_other_key_is_set() {
         let store = KVStore::new();
         store.set("other_key", "other_value");
-        store.delete("key");
+        store.del("key");
         assert_eq!(None, store.get("key"));
     }
 }

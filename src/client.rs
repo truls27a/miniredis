@@ -6,6 +6,7 @@
 /// use miniredis::client::Client;
 /// 
 /// let client = Client::new("127.0.0.1:6379");
+/// client.run();
 /// ```
 pub struct Client {
     address: String,
