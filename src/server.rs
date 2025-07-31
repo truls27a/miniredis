@@ -1,4 +1,5 @@
 use crate::kv_store::KVStore;
+use crate::error::MiniRedisError;
 use std::{
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
@@ -67,15 +68,16 @@ impl Server {
     /// let server = Server::new("127.0.0.1:6379");
     /// server.run();
     /// ```
-    pub fn run(&self) {
-        let listener = TcpListener::bind(&self.address).expect("Failed to bind to address");
+    pub fn run(&self) -> Result<(), MiniRedisError> {
+        let listener = TcpListener::bind(&self.address).map_err(|_| MiniRedisError::AddressNotBound)?;
         println!("MiniRedis is running on {}", self.address);
 
         for stream in listener.incoming() {
-            let stream = stream.expect("Failed to accept connection");
+            let stream = stream.map_err(|_| MiniRedisError::StreamNotConnected)?;
             let store = Arc::clone(&self.store);
             thread::spawn(move || Self::handle_client(stream, store));
         }
+        Ok(())
     }
 
     /// Handles a client connection.
@@ -87,14 +89,14 @@ impl Server {
     ///
     /// * `stream` - The client stream.
     /// * `store` - The shared key-value store.
-    fn handle_client(mut stream: TcpStream, store: Arc<KVStore>) {
-        let mut reader = BufReader::new(stream.try_clone().unwrap());
+    fn handle_client(mut stream: TcpStream, store: Arc<KVStore>) -> Result<(), MiniRedisError> {
+        let mut reader = BufReader::new(stream.try_clone().map_err(|_| MiniRedisError::StreamClosed)?);
 
         let mut line = String::new();
 
         loop {
             line.clear();
-            if reader.read_line(&mut line).unwrap() == 0 {
+            if reader.read_line(&mut line).map_err(|_| MiniRedisError::StreamNotReadable)? == 0 {
                 break;
             }
 
@@ -103,11 +105,12 @@ impl Server {
                 None => continue,
             };
 
-            let response = Self::handle_command(&command, args, &store);
+            let response = Self::handle_command(&command, args, &store)?;
 
-            stream.write_all(response.as_bytes()).unwrap();
-            stream.write_all(b"\n").unwrap();
+            stream.write_all(response.as_bytes()).map_err(|_| MiniRedisError::StreamNotWritable)?;
+            stream.write_all(b"\n").map_err(|_| MiniRedisError::StreamNotWritable)?;
         }
+        Ok(())
     }
 
     /// Parses a command from a stream.
@@ -142,30 +145,31 @@ impl Server {
     ///
     /// A string containing the response to the command.
     /// Can either be an error message or a response to the command.
-    fn handle_command(command: &str, args: Vec<String>, store: &Arc<KVStore>) -> String {
+    fn handle_command(command: &str, args: Vec<String>, store: &Arc<KVStore>) -> Result<String, MiniRedisError> {
         let key = match args.get(0) {
             Some(key) => key,
-            None => return "ERR wrong number of arguments".to_string(),
+            None => return Err(MiniRedisError::InvalidArguments),
         };
         let value: Option<&String> = args.get(1);
 
         match command {
             "GET" => match store.get(key) {
-                Some(value) => value,
-                None => "nil".to_string(),
+                Ok(Some(value)) => Ok(value),
+                Ok(None) => Ok("nil".to_string()),
+                Err(e) => Err(e),
             },
             "SET" => {
                 match value {
-                    Some(value) => store.set(key, value),
-                    None => return "ERR wrong number of arguments for 'set' command".to_string(),
-                }
-                "OK".to_string()
+                    Some(value) => store.set(key, value)?,
+                    None => return Err(MiniRedisError::InvalidArguments),
+                };
+                Ok("OK".to_string())
             }
             "DEL" => {
-                store.del(key);
-                "OK".to_string()
+                store.del(key)?;
+                Ok("OK".to_string())
             }
-            _ => "ERR unknown command".to_string(),
+            _ => Err(MiniRedisError::InvalidCommand),
         }
     }
 }
@@ -184,7 +188,7 @@ mod tests {
     #[test]
     fn new_creates_server_with_empty_store() {
         let server = Server::new("127.0.0.1:0");
-        assert!(server.store.get("nonexistent_key").is_none());
+        assert!(server.store.get("nonexistent_key").unwrap().is_none());
     }
 
     #[test]
@@ -258,10 +262,10 @@ mod tests {
     #[test]
     fn handle_command_get_returns_value_when_key_exists() {
         let store = Arc::new(KVStore::new());
-        store.set("testkey", "testvalue");
+        store.set("testkey", "testvalue").unwrap();
 
         let response = Server::handle_command("GET", vec!["testkey".to_string()], &store);
-        assert_eq!("testvalue", response);
+        assert_eq!("testvalue", response.unwrap());
     }
 
     #[test]
@@ -269,7 +273,7 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("GET", vec!["nonexistent".to_string()], &store);
-        assert_eq!("nil", response);
+        assert_eq!("nil", response.unwrap());
     }
 
     #[test]
@@ -277,7 +281,7 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("GET", vec![], &store);
-        assert_eq!("ERR wrong number of arguments", response);
+        assert_eq!("ERR wrong number of arguments", response.unwrap());
     }
 
     #[test]
@@ -289,22 +293,22 @@ mod tests {
             vec!["testkey".to_string(), "testvalue".to_string()],
             &store,
         );
-        assert_eq!("OK", response);
-        assert_eq!(Some("testvalue".to_string()), store.get("testkey"));
+        assert_eq!("OK", response.unwrap());
+        assert_eq!(Some("testvalue".to_string()), store.get("testkey").unwrap());
     }
 
     #[test]
     fn handle_command_set_overwrites_existing_value() {
         let store = Arc::new(KVStore::new());
-        store.set("testkey", "oldvalue");
+        store.set("testkey", "oldvalue").unwrap();
 
         let response = Server::handle_command(
             "SET",
             vec!["testkey".to_string(), "newvalue".to_string()],
             &store,
         );
-        assert_eq!("OK", response);
-        assert_eq!(Some("newvalue".to_string()), store.get("testkey"));
+        assert_eq!("OK", response.unwrap());
+        assert_eq!(Some("newvalue".to_string()), store.get("testkey").unwrap());
     }
 
     #[test]
@@ -312,7 +316,7 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("SET", vec!["testkey".to_string()], &store);
-        assert_eq!("ERR wrong number of arguments for 'set' command", response);
+        assert_eq!("ERR wrong number of arguments for 'set' command", response.unwrap());
     }
 
     #[test]
@@ -320,17 +324,17 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("SET", vec![], &store);
-        assert_eq!("ERR wrong number of arguments", response);
+        assert_eq!("ERR wrong number of arguments", response.unwrap());
     }
 
     #[test]
     fn handle_command_del_removes_key_and_returns_ok() {
         let store = Arc::new(KVStore::new());
-        store.set("testkey", "testvalue");
+        store.set("testkey", "testvalue").unwrap();
 
         let response = Server::handle_command("DEL", vec!["testkey".to_string()], &store);
-        assert_eq!("OK", response);
-        assert_eq!(None, store.get("testkey"));
+        assert_eq!("OK", response.unwrap());
+        assert_eq!(None, store.get("testkey").unwrap());
     }
 
     #[test]
@@ -338,7 +342,7 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("DEL", vec!["nonexistent".to_string()], &store);
-        assert_eq!("OK", response);
+        assert_eq!("OK", response.unwrap());
     }
 
     #[test]
@@ -346,7 +350,7 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("DEL", vec![], &store);
-        assert_eq!("ERR wrong number of arguments", response);
+        assert_eq!("ERR wrong number of arguments", response.unwrap());
     }
 
     #[test]
@@ -354,6 +358,6 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("UNKNOWN", vec!["arg".to_string()], &store);
-        assert_eq!("ERR unknown command", response);
+        assert_eq!("ERR unknown command", response.unwrap());
     }
 }

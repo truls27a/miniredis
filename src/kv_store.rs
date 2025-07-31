@@ -1,5 +1,7 @@
 use std::{collections::HashMap, sync::{Arc, Mutex, MutexGuard}};
 
+use crate::error::MiniRedisError;
+
 /// A key-value store that can be shared between threads.
 /// 
 /// KVStore is a thread-safe key-value store that can be used to store and retrieve data between threads.
@@ -61,9 +63,9 @@ impl KVStore {
     /// let value = store.get("key");
     /// assert_eq!(value, Some("value".to_string()));
     /// ```
-    pub fn get(&self, key: &str) -> Option<String> {
-        let store = self.get_store();
-        store.get(key).cloned()
+    pub fn get(&self, key: &str) -> Result<Option<String>, MiniRedisError> {
+        let store = self.get_store()?;
+        Ok(store.get(key).cloned())
     }
 
     /// Sets a value in the store.
@@ -87,9 +89,10 @@ impl KVStore {
     /// let value = store.get("key");
     /// assert_eq!(value, Some("value".to_string()));
     /// ```
-    pub fn set(&self, key: &str, value: &str) {
-        let mut store = self.get_store();
+    pub fn set(&self, key: &str, value: &str) -> Result<(), MiniRedisError> {
+        let mut store = self.get_store()?;
         store.insert(key.to_string(), value.to_string());
+        Ok(())
     }
 
     /// Deletes a value from the store.
@@ -113,9 +116,10 @@ impl KVStore {
     /// let value = store.get("key");
     /// assert_eq!(value, None);
     /// ```
-    pub fn del(&self, key: &str) {
-        let mut store = self.get_store();
+    pub fn del(&self, key: &str) -> Result<(), MiniRedisError> {
+        let mut store = self.get_store()?;
         store.remove(key);
+        Ok(())
     }
 
     /// Gets a mutable reference to the store.
@@ -127,8 +131,8 @@ impl KVStore {
     /// # Panics
     /// 
     /// Panics if the store is already locked.
-    fn get_store(&self) -> MutexGuard<HashMap<String, String>> {
-        self.store.lock().unwrap()
+    fn get_store(&self) -> Result<MutexGuard<HashMap<String, String>>, MiniRedisError> {
+        self.store.lock().map_err(|_| MiniRedisError::StoreLocked)
     }
 }
 
@@ -140,72 +144,72 @@ mod tests {
     #[test]
     fn new_creates_empty_store() {
         let store = KVStore::new();
-        assert_eq!(None, store.get("key"));
+        assert_eq!(None, store.get("key").unwrap());
     }
 
     #[test]
     fn get_returns_value_if_set() {
         let store = KVStore::new();
-        store.set("key", "value");
-        assert_eq!(Some("value".to_string()), store.get("key"));
+        store.set("key", "value").unwrap();
+        assert_eq!(Some("value".to_string()), store.get("key").unwrap());
     }
 
     #[test]
     fn get_returns_none_if_not_set() {
         let store = KVStore::new();
-        assert_eq!(None, store.get("key"));
+        assert_eq!(None, store.get("key").unwrap());
     }
 
     #[test]
     fn get_returns_none_if_not_set_and_other_key_is_set() {
         let store = KVStore::new();
-        store.set("key", "value");
-        assert_eq!(None, store.get("other_key"));
+        store.set("key", "value").unwrap();
+        assert_eq!(None, store.get("other_key").unwrap());
     }
 
     #[test]
     fn get_returns_value_if_set_and_other_key_is_set() {
         let store = KVStore::new();
-        store.set("key", "value");
-        store.set("other_key", "other_value");
-        assert_eq!(Some("value".to_string()), store.get("key"));
+        store.set("key", "value").unwrap();
+        store.set("other_key", "other_value").unwrap();
+        assert_eq!(Some("value".to_string()), store.get("key").unwrap());
     }
 
     #[test]
     fn get_returns_none_if_deleted() {
         let store = KVStore::new();
-        store.set("key", "value");
-        store.del("key");
-        assert_eq!(None, store.get("key"));
+        store.set("key", "value").unwrap();
+        store.del("key").unwrap();
+        assert_eq!(None, store.get("key").unwrap());
     }
 
     #[test]
     fn set_sets_value() {
         let store = KVStore::new();
-        store.set("key", "value");
-        assert_eq!(Some("value".to_string()), store.get("key"));
+        store.set("key", "value").unwrap();
+        assert_eq!(Some("value".to_string()), store.get("key").unwrap());
     }
 
     #[test]
     fn delete_deletes_value() {
         let store = KVStore::new();
-        store.set("key", "value");
-        store.del("key");
-        assert_eq!(None, store.get("key"));
+        store.set("key", "value").unwrap();
+        store.del("key").unwrap();
+        assert_eq!(None, store.get("key").unwrap());
     }
 
     #[test]
     fn delete_does_nothing_if_key_not_set() {
         let store = KVStore::new();
-        store.del("key");
-        assert_eq!(None, store.get("key"));
+        store.del("key").unwrap();
+        assert_eq!(None, store.get("key").unwrap());
     }
 
     #[test]
     fn delete_does_nothing_if_key_not_set_and_other_key_is_set() {
         let store = KVStore::new();
-        store.set("other_key", "other_value");
-        store.del("key");
-        assert_eq!(None, store.get("key"));
+        store.set("other_key", "other_value").unwrap();
+        store.del("key").unwrap();
+        assert_eq!(None, store.get("key").unwrap());
     }
 }

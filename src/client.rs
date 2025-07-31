@@ -1,5 +1,6 @@
 use std::net::TcpStream;
 use std::io::{self, BufRead, BufReader, Write};
+use crate::error::MiniRedisError;
 
 /// A client that connects to a server and sends requests.
 /// 
@@ -57,17 +58,17 @@ impl Client {
     /// let client = Client::new("127.0.0.1:6379");
     /// client.run();
     /// ```
-    pub fn run(&self) {
-        let mut stream = TcpStream::connect(&self.address).expect("Failed to connect to server");
-        let mut reader = BufReader::new(stream.try_clone().unwrap());
+    pub fn run(&self) -> Result<(), MiniRedisError> {
+        let mut stream = TcpStream::connect(&self.address).map_err(|_| MiniRedisError::StreamNotConnected)?;
+        let mut reader = BufReader::new(stream.try_clone().map_err(|_| MiniRedisError::StreamClosed)?);
 
         println!("Connected to server at {}", self.address);
 
         loop {
             print!("> ");
-            io::stdout().flush().unwrap();
+            io::stdout().flush().map_err(|_| MiniRedisError::StreamNotFlushed)?;
 
-            let input = self.read_input();
+            let input = self.read_input()?;
 
             if input.is_empty() {
                 continue;
@@ -88,6 +89,8 @@ impl Client {
 
             println!("{}", response);
         }
+
+        Ok(())
     }
 
     /// Reads input from the user.
@@ -95,10 +98,10 @@ impl Client {
     /// # Returns
     /// 
     /// A string containing the input from the user.
-    fn read_input(&self) -> String {
+    fn read_input(&self) -> Result<String, MiniRedisError> {
         let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
-        input
+        io::stdin().read_line(&mut input).map_err(|_| MiniRedisError::StreamNotReadable)?;
+        Ok(input)
     }
 
     /// Sends input to the server.
@@ -112,15 +115,9 @@ impl Client {
     /// 
     /// A result indicating whether the input was sent successfully.
     /// 
-    fn send_input(&self, input: &str, stream: &mut TcpStream) -> Result<(), io::Error> {
-        if let Err(e) = stream.write_all(input.as_bytes()) {
-            println!("Failed to send: {}", e);
-            return Err(e);
-        }
-        if let Err(err) = stream.write_all(b"\n") {
-            println!("Failed to send newline: {}", err);
-            return Err(err);
-        }
+    fn send_input(&self, input: &str, stream: &mut TcpStream) -> Result<(), MiniRedisError> {
+        stream.write_all(input.as_bytes()).map_err(|_| MiniRedisError::StreamNotWritable)?;
+        stream.write_all(b"\n").map_err(|_| MiniRedisError::StreamNotWritable)?;
         Ok(())
     }
 
@@ -134,12 +131,9 @@ impl Client {
     /// 
     /// A result containing the response from the server.
     /// If the response is empty, an error is returned.
-    fn read_response(&self, reader: &mut BufReader<TcpStream>) -> Result<String, io::Error> {
+    fn read_response(&self, reader: &mut BufReader<TcpStream>) -> Result<String, MiniRedisError> {
         let mut response = String::new();
-        if reader.read_line(&mut response).is_err() {
-            println!("Error reading response");
-            return Err(io::Error::new(io::ErrorKind::Other, "Error reading response"));
-        }
+        reader.read_line(&mut response).map_err(|_| MiniRedisError::StreamNotReadable)?;
         Ok(response)
     }
 }
