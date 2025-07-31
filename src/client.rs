@@ -49,9 +49,8 @@ impl Client {
     /// client.run();
     /// ```
     pub fn run(&self) {
-        let stream = TcpStream::connect(&self.address).expect("Failed to connect to server");
+        let mut stream = TcpStream::connect(&self.address).expect("Failed to connect to server");
         let mut reader = BufReader::new(stream.try_clone().unwrap());
-        let mut writer = stream;
 
         println!("Connected to server at {}", self.address);
 
@@ -74,11 +73,11 @@ impl Client {
                 break;
             }
 
-            if let Err(e) = writer.write_all(trimmed.as_bytes()) {
+            if let Err(e) = stream.write_all(trimmed.as_bytes()) {
                 println!("Failed to send: {}", e);
                 break;
             }
-            if let Err(err) = writer.write_all(b"\n") {
+            if let Err(err) = stream.write_all(b"\n") {
                 println!("Failed to send newline: {}", err);
                 break;
             }

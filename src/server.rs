@@ -75,9 +75,8 @@ impl Server {
     ///
     /// * `stream` - The client stream.
     /// * `store` - The shared key-value store.
-    fn handle_client(stream: TcpStream, store: Arc<KVStore>) {
+    fn handle_client(mut stream: TcpStream, store: Arc<KVStore>) {
         let mut reader = BufReader::new(stream.try_clone().unwrap());
-        let mut writer = stream;
 
         let mut line = String::new();
 
@@ -94,8 +93,8 @@ impl Server {
 
             let response = Self::handle_command(&command, args, &store);
 
-            writer.write_all(response.as_bytes()).unwrap();
-            writer.write_all(b"\n").unwrap();
+            stream.write_all(response.as_bytes()).unwrap();
+            stream.write_all(b"\n").unwrap();
         }
     }
 
