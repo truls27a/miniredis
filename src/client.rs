@@ -40,6 +40,15 @@ impl Client {
 
     /// Runs the client.
     /// 
+    /// Run starts the client and connects to the server.
+    /// It will then enter a loop where it reads input from the user,
+    /// sends it to the server, and prints the response.
+    /// 
+    /// # Panics
+    /// 
+    /// If the client fails to connect to the server,
+    /// read from the stream, or write to the stream, it will panic.
+    ///
     /// # Examples
     /// 
     /// ```rust,no_run

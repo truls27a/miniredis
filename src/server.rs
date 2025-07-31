@@ -47,6 +47,17 @@ impl Server {
     }
 
     /// Runs the server.
+    /// 
+    /// Run starts the server and listens for client connections.
+    /// When receiving a client connection, it will spawn a new thread.
+    /// It will then handle the client messages in a loop.
+    /// Each message is parsed and then executed through the key value store,
+    /// and the response is written back to the client.
+    /// 
+    /// # Panics
+    /// 
+    /// If the server fails to bind to the address,
+    /// read from the stream, or write to the stream, it will panic.
     ///
     /// # Examples
     ///
@@ -69,7 +80,8 @@ impl Server {
 
     /// Handles a client connection.
     ///
-    /// handle_client reads commands from a stream, parses them, executes them, and writes the responses back to the stream.
+    /// handle_client reads commands from a stream, parses them,
+    /// executes them, and writes the responses back to the stream.
     ///
     /// # Arguments
     ///
@@ -106,7 +118,8 @@ impl Server {
     ///
     /// # Returns
     ///
-    /// A optional tuple containing the command and its arguments. If the command is empty or the line is empty, None is returned.
+    /// A optional tuple containing the command and its arguments.
+    /// If the command is empty or the line is empty, None is returned.
     fn parse_command(line: &str) -> Option<(String, Vec<String>)> {
         let mut parts = line.split_whitespace();
         let command = match parts.next() {
@@ -127,7 +140,8 @@ impl Server {
     ///
     /// # Returns
     ///
-    /// A string containing the response to the command. Can either be an error message or a response to the command.
+    /// A string containing the response to the command.
+    /// Can either be an error message or a response to the command.
     fn handle_command(command: &str, args: Vec<String>, store: &Arc<KVStore>) -> String {
         let key = match args.get(0) {
             Some(key) => key,
