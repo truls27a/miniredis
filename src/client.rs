@@ -58,37 +58,54 @@ impl Client {
             print!("> ");
             io::stdout().flush().unwrap();
 
-            let mut input = String::new();
-            if io::stdin().read_line(&mut input).is_err() {
-                println!("Error reading input");
-                continue;
-            }
+            let input = self.read_input();
 
-            let trimmed = input.trim();
-            if trimmed.is_empty() {
+            if input.is_empty() {
                 continue;
             }
             
-            if trimmed == "quit" {
+            if input == "quit" {
                 break;
             }
 
-            if let Err(e) = stream.write_all(trimmed.as_bytes()) {
-                println!("Failed to send: {}", e);
-                break;
-            }
-            if let Err(err) = stream.write_all(b"\n") {
-                println!("Failed to send newline: {}", err);
+            if let Err(_) = self.send_input(&input, &mut stream) {
                 break;
             }
 
-            let mut response = String::new();
-            if reader.read_line(&mut response).is_err() {
-                println!("Error reading response");
-                break;
-            }
+            let response = match self.read_response(&mut reader) {
+                Ok(response) => response,
+                Err(_) => break,
+            };
 
             println!("{}", response);
         }
+    }
+
+
+    fn read_input(&self) -> String {
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        input
+    }
+
+    fn send_input(&self, input: &str, stream: &mut TcpStream) -> Result<(), io::Error> {
+        if let Err(e) = stream.write_all(input.as_bytes()) {
+            println!("Failed to send: {}", e);
+            return Err(e);
+        }
+        if let Err(err) = stream.write_all(b"\n") {
+            println!("Failed to send newline: {}", err);
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    fn read_response(&self, reader: &mut BufReader<TcpStream>) -> Result<String, io::Error> {
+        let mut response = String::new();
+        if reader.read_line(&mut response).is_err() {
+            println!("Error reading response");
+            return Err(io::Error::new(io::ErrorKind::Other, "Error reading response"));
+        }
+        Ok(response)
     }
 }
