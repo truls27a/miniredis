@@ -501,4 +501,37 @@ mod tests {
             response.unwrap_err()
         );
     }
+
+    #[test]
+    fn handle_command_returns_error_for_extra_arguments() {
+        let store = Arc::new(KVStore::new());
+
+        let response = Server::handle_command("GET", vec!["testkey".to_string(), "extra".to_string()], &store);
+
+        assert!(response.is_err());
+        assert_eq!(
+            MiniRedisError::InvalidArguments {
+                arguments: vec!["testkey".to_string(), "extra".to_string()]
+            },
+            response.unwrap_err()
+        );
+
+        let response = Server::handle_command("SET", vec!["testkey".to_string(), "testvalue".to_string(), "extra".to_string()], &store);
+        assert!(response.is_err());
+        assert_eq!(
+            MiniRedisError::InvalidArguments {
+                arguments: vec!["testkey".to_string(), "testvalue".to_string(), "extra".to_string()]
+            },
+            response.unwrap_err()
+        );
+
+        let response = Server::handle_command("DEL", vec!["testkey".to_string(), "extra".to_string()], &store);
+        assert!(response.is_err());
+        assert_eq!(
+            MiniRedisError::InvalidArguments {
+                arguments: vec!["testkey".to_string(), "extra".to_string()]
+            },
+            response.unwrap_err()
+        );
+    }
 }
