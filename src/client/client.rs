@@ -120,6 +120,34 @@ impl Client {
         Ok(())
     }
 
+    /// Prints the help message.
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust,no_run
+    /// use miniredis::client::client::Client;
+    /// 
+    /// Client::print_help();
+    /// ```
+    pub fn print_help() {
+        println!("MiniRedis Client");
+        println!();
+        println!("USAGE:");
+        println!("    miniredis client <ADDRESS>");
+        println!();
+        println!("ARGS:");
+        println!("    <ADDRESS>    The address of the server to connect to [default: 127.0.0.1:6379]");
+        println!();
+        println!("EXAMPLES:");
+        println!("    miniredis client 127.0.0.1:6379");
+        println!("    miniredis client --help");
+        println!();
+        println!("COMMANDS IN THE CLIENT:");
+        println!("    GET <KEY>             Get the value of a key");
+        println!("    SET <KEY> <VALUE>     Set the value of a key");
+        println!("    DEL <KEY>             Delete a key");
+    }
+
     /// Reads input from the user.
     /// 
     /// # Returns
