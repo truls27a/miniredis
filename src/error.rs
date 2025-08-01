@@ -37,8 +37,8 @@ impl std::fmt::Display for MiniRedisError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MiniRedisError::StoreLocked => write!(f, "Could not access the key value store as it is locked."),
-            MiniRedisError::InvalidCommand{command} => write!(f, "Invalid command: {}.", command),
-            MiniRedisError::InvalidArguments{arguments} => write!(f, "Invalid arguments: {:?}.", arguments),
+            MiniRedisError::InvalidCommand{command} => write!(f, "Invalid command: {}. Run 'miniredis --help' for more information.", command),
+            MiniRedisError::InvalidArguments{arguments} => write!(f, "Invalid arguments: {:?}. Run 'miniredis --help' for more information.", arguments),
             MiniRedisError::StreamClosed => write!(f, "The stream is closed."),
             MiniRedisError::StreamNotReadable => write!(f, "Could not read from the stream."),
             MiniRedisError::StreamNotWritable => write!(f, "Could not write to the stream."),
