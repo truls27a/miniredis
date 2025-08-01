@@ -230,6 +230,8 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
 
     #[test]
@@ -272,8 +274,6 @@ mod tests {
 
     #[test]
     fn read_input_reads_line_from_reader() {
-        use std::io::Cursor;
-
         let client = Client::new("127.0.0.1:6379");
         let input_data = "test input\n";
         let cursor = Cursor::new(input_data.as_bytes());
