@@ -12,7 +12,7 @@ use std::{
 /// # Examples
 ///
 /// ```rust,no_run
-/// use miniredis::server::server::Server;
+/// use miniredis::server::Server;
 ///
 /// let server = Server::new("127.0.0.1:6379");
 /// server.run();
@@ -36,7 +36,7 @@ impl Server {
     /// # Examples
     ///
     /// ```rust
-    /// use miniredis::server::server::Server;
+    /// use miniredis::server::Server;
     ///
     /// let server = Server::new("127.0.0.1:6379");
     /// ```
@@ -58,16 +58,16 @@ impl Server {
     /// # Returns
     ///
     /// A result indicating whether the server was started successfully.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// If the server fails to bind to the address,
     /// read from the stream, or write to the stream, it will return an error.
     ///
     /// # Examples
     ///
     /// ```rust, no_run
-    /// use miniredis::server::server::Server;
+    /// use miniredis::server::Server;
     ///
     /// let server = Server::new("127.0.0.1:6379");
     /// server.run();
@@ -78,7 +78,9 @@ impl Server {
         println!("MiniRedis is running on {}", self.address);
 
         for stream in listener.incoming() {
-            let stream = stream.map_err(|_| MiniRedisError::StreamNotConnected{address: self.address.clone()})?;
+            let stream = stream.map_err(|_| MiniRedisError::StreamNotConnected {
+                address: self.address.clone(),
+            })?;
             let store = Arc::clone(&self.store);
             thread::spawn(move || Self::handle_client(stream, store));
         }
@@ -89,13 +91,13 @@ impl Server {
     ///
     /// handle_client reads commands from a stream, parses them,
     /// executes them, and writes the responses back to the stream.
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// A result indicating whether the client was handled successfully.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// If the stream is not readable, writable, or closed, it will return an error.
     ///
     /// # Arguments
@@ -170,9 +172,9 @@ impl Server {
     ///
     /// A string containing the response to the command.
     /// Can either be an error message or a response to the command.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// If the command is invalid, the arguments are invalid,
     /// or the key is not found, it will return an error.
     fn handle_command(
@@ -182,7 +184,7 @@ impl Server {
     ) -> Result<String, MiniRedisError> {
         let key = match args.get(0) {
             Some(key) => key,
-            None => return Err(MiniRedisError::InvalidArguments{arguments: args}),
+            None => return Err(MiniRedisError::InvalidArguments { arguments: args }),
         };
         let value: Option<&String> = args.get(1);
 
@@ -195,7 +197,7 @@ impl Server {
             "SET" => {
                 match value {
                     Some(value) => store.set(key, value)?,
-                    None => return Err(MiniRedisError::InvalidArguments{arguments: args}),
+                    None => return Err(MiniRedisError::InvalidArguments { arguments: args }),
                 };
                 Ok("OK".to_string())
             }
@@ -203,7 +205,9 @@ impl Server {
                 store.del(key)?;
                 Ok("OK".to_string())
             }
-            _ => Err(MiniRedisError::InvalidCommand{command: command.to_string()}),
+            _ => Err(MiniRedisError::InvalidCommand {
+                command: command.to_string(),
+            }),
         }
     }
 }
@@ -350,9 +354,14 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("SET", vec!["testkey".to_string()], &store);
-        
+
         assert!(response.is_err());
-        assert_eq!(MiniRedisError::InvalidArguments{arguments: vec!["testkey".to_string()]}, response.unwrap_err());
+        assert_eq!(
+            MiniRedisError::InvalidArguments {
+                arguments: vec!["testkey".to_string()]
+            },
+            response.unwrap_err()
+        );
     }
 
     #[test]
@@ -362,7 +371,10 @@ mod tests {
         let response = Server::handle_command("SET", vec![], &store);
 
         assert!(response.is_err());
-        assert_eq!(MiniRedisError::InvalidArguments{arguments: vec![]}, response.unwrap_err());
+        assert_eq!(
+            MiniRedisError::InvalidArguments { arguments: vec![] },
+            response.unwrap_err()
+        );
     }
 
     #[test]
@@ -392,7 +404,10 @@ mod tests {
         let response = Server::handle_command("DEL", vec![], &store);
 
         assert!(response.is_err());
-        assert_eq!(MiniRedisError::InvalidArguments{arguments: vec![]}, response.unwrap_err());
+        assert_eq!(
+            MiniRedisError::InvalidArguments { arguments: vec![] },
+            response.unwrap_err()
+        );
     }
 
     #[test]
@@ -400,8 +415,13 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("UNKNOWN", vec!["arg".to_string()], &store);
-        
+
         assert!(response.is_err());
-        assert_eq!(MiniRedisError::InvalidCommand{command: "UNKNOWN".to_string()}, response.unwrap_err());
+        assert_eq!(
+            MiniRedisError::InvalidCommand {
+                command: "UNKNOWN".to_string()
+            },
+            response.unwrap_err()
+        );
     }
 }
