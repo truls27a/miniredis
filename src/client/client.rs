@@ -39,6 +39,34 @@ impl Client {
         Self { address: address.to_string() }
     }
 
+    /// Creates a new client from command line arguments.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `args` - The command line arguments.
+    /// 
+    /// # Returns
+    /// 
+    /// A new client.
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust,no_run
+    /// use miniredis::client::client::Client;
+    /// 
+    /// let client = Client::from_args(&["miniredis", "127.0.0.1:6379"]);
+    /// client.run();
+    /// ```
+    pub fn from_args(args: &[String]) -> Self {
+        let address = if args.len() > 1 {
+            &args[1]
+        } else {
+            "127.0.0.1:6379"
+        };
+
+        Self::new(address)
+    }
+
     /// Runs the client.
     /// 
     /// Run starts the client and connects to the server.
