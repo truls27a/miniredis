@@ -307,6 +307,32 @@ mod tests {
     }
 
     #[test]
+    fn from_args_uses_default_address_when_no_args_provided() {
+        let args = vec!["miniredis".to_string()];
+        let server = Server::from_args(&args);
+        assert_eq!("127.0.0.1:6379", server.address);
+    }
+
+    #[test]
+    fn from_args_uses_provided_address_when_args_given() {
+        let expected_address = "localhost:9999";
+        let args = vec!["miniredis".to_string(), expected_address.to_string()];
+        let server = Server::from_args(&args);
+        assert_eq!(expected_address.to_string(), server.address);
+    }
+
+    #[test]
+    fn from_args_uses_first_argument_as_address() {
+        let expected_address = "test.example.com:1234";
+        let args = vec![
+            "miniredis".to_string(),
+            expected_address.to_string(),
+            "ignored_arg".to_string(),
+        ];
+        let server = Server::from_args(&args);
+        assert_eq!(expected_address.to_string(), server.address);
+    }
+    #[test]
     fn parse_command_parses_get_command() {
         let line = "GET mykey\n";
         let result = Server::parse_command(line);
@@ -506,7 +532,11 @@ mod tests {
     fn handle_command_returns_error_for_extra_arguments() {
         let store = Arc::new(KVStore::new());
 
-        let response = Server::handle_command("GET", vec!["testkey".to_string(), "extra".to_string()], &store);
+        let response = Server::handle_command(
+            "GET",
+            vec!["testkey".to_string(), "extra".to_string()],
+            &store,
+        );
 
         assert!(response.is_err());
         assert_eq!(
@@ -516,16 +546,32 @@ mod tests {
             response.unwrap_err()
         );
 
-        let response = Server::handle_command("SET", vec!["testkey".to_string(), "testvalue".to_string(), "extra".to_string()], &store);
+        let response = Server::handle_command(
+            "SET",
+            vec![
+                "testkey".to_string(),
+                "testvalue".to_string(),
+                "extra".to_string(),
+            ],
+            &store,
+        );
         assert!(response.is_err());
         assert_eq!(
             MiniRedisError::InvalidArguments {
-                arguments: vec!["testkey".to_string(), "testvalue".to_string(), "extra".to_string()]
+                arguments: vec![
+                    "testkey".to_string(),
+                    "testvalue".to_string(),
+                    "extra".to_string()
+                ]
             },
             response.unwrap_err()
         );
 
-        let response = Server::handle_command("DEL", vec!["testkey".to_string(), "extra".to_string()], &store);
+        let response = Server::handle_command(
+            "DEL",
+            vec!["testkey".to_string(), "extra".to_string()],
+            &store,
+        );
         assert!(response.is_err());
         assert_eq!(
             MiniRedisError::InvalidArguments {

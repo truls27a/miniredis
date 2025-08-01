@@ -102,6 +102,7 @@ impl Client {
                 .try_clone()
                 .map_err(|_| MiniRedisError::StreamClosed)?,
         );
+        let mut terminal_reader = BufReader::new(io::stdin());
 
         println!("Connected to server at {}", self.address);
 
@@ -111,7 +112,7 @@ impl Client {
                 .flush()
                 .map_err(|_| MiniRedisError::StreamNotFlushed)?;
 
-            let input = self.read_input()?;
+            let input = self.read_input(&mut terminal_reader)?;
 
             if input.is_empty() {
                 continue;
@@ -172,9 +173,9 @@ impl Client {
     /// # Errors
     ///
     /// If the input cannot be read, it will return an error.
-    fn read_input(&self) -> Result<String, MiniRedisError> {
+    fn read_input<R: BufRead>(&self, reader: &mut R) -> Result<String, MiniRedisError> {
         let mut input = String::new();
-        io::stdin()
+        reader
             .read_line(&mut input)
             .map_err(|_| MiniRedisError::StreamNotReadable)?;
         Ok(input)
@@ -185,7 +186,7 @@ impl Client {
     /// # Arguments
     ///
     /// * `input` - The input to send to the server.
-    /// * `stream` - The stream to send the input to.
+    /// * `writer` - The writer to send the input to.
     ///
     /// # Returns
     ///
@@ -193,12 +194,12 @@ impl Client {
     ///
     /// # Errors
     ///
-    /// If the input cannot be written to the stream, it will return an error.
-    fn send_input(&self, input: &str, stream: &mut TcpStream) -> Result<(), MiniRedisError> {
-        stream
+    /// If the input cannot be written to the writer, it will return an error.
+    fn send_input<W: Write>(&self, input: &str, writer: &mut W) -> Result<(), MiniRedisError> {
+        writer
             .write_all(input.as_bytes())
             .map_err(|_| MiniRedisError::StreamNotWritable)?;
-        stream
+        writer
             .write_all(b"\n")
             .map_err(|_| MiniRedisError::StreamNotWritable)?;
         Ok(())
@@ -218,11 +219,118 @@ impl Client {
     /// # Errors
     ///
     /// If the response cannot be read, it will return an error.
-    fn read_response(&self, reader: &mut BufReader<TcpStream>) -> Result<String, MiniRedisError> {
+    fn read_response<R: BufRead>(&self, reader: &mut R) -> Result<String, MiniRedisError> {
         let mut response = String::new();
         reader
             .read_line(&mut response)
             .map_err(|_| MiniRedisError::StreamNotReadable)?;
         Ok(response)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_creates_client_with_given_address() {
+        let address = "192.168.1.1:8080";
+        let client = Client::new(address);
+
+        assert_eq!(address.to_string(), client.address);
+    }
+
+    #[test]
+    fn from_args_uses_default_address_when_no_args_provided() {
+        let args = vec!["miniredis".to_string()];
+        let client = Client::from_args(&args);
+
+        assert_eq!("127.0.0.1:6379".to_string(), client.address);
+    }
+
+    #[test]
+    fn from_args_uses_provided_address_when_args_given() {
+        let expected_address = "localhost:9999";
+        let args = vec!["miniredis".to_string(), expected_address.to_string()];
+        let client = Client::from_args(&args);
+
+        assert_eq!(expected_address.to_string(), client.address);
+    }
+
+    #[test]
+    fn from_args_uses_first_argument_as_address() {
+        let expected_address = "test.example.com:1234";
+        let args = vec![
+            "miniredis".to_string(),
+            expected_address.to_string(),
+            "ignored_arg".to_string(),
+        ];
+        let client = Client::from_args(&args);
+
+        assert_eq!(expected_address.to_string(), client.address);
+    }
+
+    #[test]
+    fn read_input_reads_line_from_reader() {
+        use std::io::Cursor;
+
+        let client = Client::new("127.0.0.1:6379");
+        let input_data = "test input\n";
+        let cursor = Cursor::new(input_data.as_bytes());
+        let mut reader = BufReader::new(cursor);
+
+        let result = client.read_input(&mut reader).unwrap();
+
+        assert_eq!("test input\n".to_string(), result);
+    }
+
+    #[test]
+    fn send_input_writes_input_with_newline() {
+        let client = Client::new("127.0.0.1:6379");
+        let mut output = Vec::new();
+        let input = "SET key value";
+
+        client.send_input(input, &mut output).unwrap();
+
+        assert_eq!("SET key value\n".as_bytes(), output.as_slice());
+    }
+
+    #[test]
+    fn send_input_handles_empty_input() {
+        let client = Client::new("127.0.0.1:6379");
+        let mut output = Vec::new();
+        let input = "";
+
+        client.send_input(input, &mut output).unwrap();
+
+        assert_eq!("\n".as_bytes(), output.as_slice());
+    }
+
+    #[test]
+    fn read_response_reads_line_from_reader() {
+        use std::io::Cursor;
+
+        let client = Client::new("127.0.0.1:6379");
+        let response_data = "OK\n";
+        let cursor = Cursor::new(response_data.as_bytes());
+        let mut reader = BufReader::new(cursor);
+
+        let result = client.read_response(&mut reader).unwrap();
+
+        assert_eq!("OK\n".to_string(), result);
+    }
+
+    #[test]
+    fn read_response_handles_multiline_response() {
+        use std::io::Cursor;
+
+        let client = Client::new("127.0.0.1:6379");
+        let response_data = "value with spaces\nsecond line\n";
+        let cursor = Cursor::new(response_data.as_bytes());
+        let mut reader = BufReader::new(cursor);
+
+        let result = client.read_response(&mut reader).unwrap();
+
+        assert_eq!("value with spaces\n".to_string(), result);
     }
 }
