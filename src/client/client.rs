@@ -7,7 +7,7 @@ use crate::error::MiniRedisError;
 /// # Examples
 /// 
 /// ```rust
-/// use miniredis::client::Client;
+/// use miniredis::client::client::Client;
 /// 
 /// let client = Client::new("127.0.0.1:6379");
 /// client.run();
@@ -30,7 +30,7 @@ impl Client {
     /// # Examples
     /// 
     /// ```rust,no_run
-    /// use miniredis::client::Client;
+    /// use miniredis::client::client::Client;
     /// 
     /// let client = Client::new("127.0.0.1:6379");
     /// client.run();
@@ -57,7 +57,7 @@ impl Client {
     /// # Examples
     /// 
     /// ```rust,no_run
-    /// use miniredis::client::Client;
+    /// use miniredis::client::client::Client;
     /// 
     /// let client = Client::new("127.0.0.1:6379");
     /// client.run();

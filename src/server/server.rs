@@ -12,7 +12,7 @@ use std::{
 /// # Examples
 ///
 /// ```rust,no_run
-/// use miniredis::server::Server;
+/// use miniredis::server::server::Server;
 ///
 /// let server = Server::new("127.0.0.1:6379");
 /// server.run();
@@ -36,7 +36,7 @@ impl Server {
     /// # Examples
     ///
     /// ```rust
-    /// use miniredis::server::Server;
+    /// use miniredis::server::server::Server;
     ///
     /// let server = Server::new("127.0.0.1:6379");
     /// ```
@@ -67,7 +67,7 @@ impl Server {
     /// # Examples
     ///
     /// ```rust, no_run
-    /// use miniredis::server::Server;
+    /// use miniredis::server::server::Server;
     ///
     /// let server = Server::new("127.0.0.1:6379");
     /// server.run();
@@ -315,7 +315,7 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("GET", vec![], &store);
-        assert_eq!("ERR wrong number of arguments", response.unwrap());
+        assert!(response.is_err());
     }
 
     #[test]
@@ -350,10 +350,9 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("SET", vec!["testkey".to_string()], &store);
-        assert_eq!(
-            "ERR wrong number of arguments for 'set' command",
-            response.unwrap()
-        );
+        
+        assert!(response.is_err());
+        assert_eq!(MiniRedisError::InvalidArguments{arguments: vec!["testkey".to_string()]}, response.unwrap_err());
     }
 
     #[test]
@@ -361,7 +360,9 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("SET", vec![], &store);
-        assert_eq!("ERR wrong number of arguments", response.unwrap());
+
+        assert!(response.is_err());
+        assert_eq!(MiniRedisError::InvalidArguments{arguments: vec![]}, response.unwrap_err());
     }
 
     #[test]
@@ -370,6 +371,7 @@ mod tests {
         store.set("testkey", "testvalue").unwrap();
 
         let response = Server::handle_command("DEL", vec!["testkey".to_string()], &store);
+
         assert_eq!("OK", response.unwrap());
         assert_eq!(None, store.get("testkey").unwrap());
     }
@@ -379,6 +381,7 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("DEL", vec!["nonexistent".to_string()], &store);
+
         assert_eq!("OK", response.unwrap());
     }
 
@@ -387,7 +390,9 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("DEL", vec![], &store);
-        assert_eq!("ERR wrong number of arguments", response.unwrap());
+
+        assert!(response.is_err());
+        assert_eq!(MiniRedisError::InvalidArguments{arguments: vec![]}, response.unwrap_err());
     }
 
     #[test]
@@ -395,6 +400,8 @@ mod tests {
         let store = Arc::new(KVStore::new());
 
         let response = Server::handle_command("UNKNOWN", vec!["arg".to_string()], &store);
-        assert_eq!("ERR unknown command", response.unwrap());
+        
+        assert!(response.is_err());
+        assert_eq!(MiniRedisError::InvalidCommand{command: "UNKNOWN".to_string()}, response.unwrap_err());
     }
 }

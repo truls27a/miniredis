@@ -1,4 +1,4 @@
-use miniredis::server::Server;
+use miniredis::server::server::Server;
 
 fn main() {
     let server = Server::new("127.0.0.1:6379");
