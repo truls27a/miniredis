@@ -180,7 +180,10 @@ impl Server {
                 None => continue,
             };
 
-            let response = Self::handle_command(&command, args, &store)?;
+            let response = match Self::handle_command(&command, args, &store) {
+                Ok(response) => response,
+                Err(e) => e.to_string(),
+            };
 
             stream
                 .write_all(response.as_bytes())
@@ -234,28 +237,50 @@ impl Server {
         args: Vec<String>,
         store: &Arc<KVStore>,
     ) -> Result<String, MiniRedisError> {
-        let key = match args.get(0) {
-            Some(key) => key,
-            None => return Err(MiniRedisError::InvalidArguments { arguments: args }),
-        };
+        let key: Option<&String> = args.get(0);
         let value: Option<&String> = args.get(1);
+        let args_len = args.len();
 
         match command {
-            "GET" => match store.get(key) {
-                Ok(Some(value)) => Ok(value),
-                Ok(None) => Ok("nil".to_string()),
-                Err(e) => Err(e),
-            },
+            "GET" => {
+                if args_len != 1 {
+                    return Err(MiniRedisError::InvalidArguments { arguments: args });
+                }
+                match key {
+                    Some(key) => match store.get(key) {
+                        Ok(Some(value)) => Ok(value),
+                        Ok(None) => Ok("nil".to_string()),
+                        Err(e) => Err(e),
+                    },
+                    None => Err(MiniRedisError::InvalidArguments { arguments: args }),
+                }
+            }
             "SET" => {
-                match value {
-                    Some(value) => store.set(key, value)?,
-                    None => return Err(MiniRedisError::InvalidArguments { arguments: args }),
-                };
-                Ok("OK".to_string())
+                if args_len != 2 {
+                    return Err(MiniRedisError::InvalidArguments { arguments: args });
+                }
+                match key {
+                    Some(key) => match value {
+                        Some(value) => {
+                            store.set(key, value)?;
+                            Ok("OK".to_string())
+                        }
+                        None => Err(MiniRedisError::InvalidArguments { arguments: args }),
+                    },
+                    None => Err(MiniRedisError::InvalidArguments { arguments: args }),
+                }
             }
             "DEL" => {
-                store.del(key)?;
-                Ok("OK".to_string())
+                if args_len != 1 {
+                    return Err(MiniRedisError::InvalidArguments { arguments: args });
+                }
+                match key {
+                    Some(key) => {
+                        store.del(key)?;
+                        Ok("OK".to_string())
+                    }
+                    None => Err(MiniRedisError::InvalidArguments { arguments: args }),
+                }
             }
             _ => Err(MiniRedisError::InvalidCommand {
                 command: command.to_string(),
