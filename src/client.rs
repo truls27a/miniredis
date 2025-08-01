@@ -143,6 +143,8 @@ impl Client {
     pub fn print_help() {
         println!("MiniRedis Client");
         println!();
+        println!("Connects to a MiniRedis server and sends commands to it.");
+        println!();
         println!("USAGE:");
         println!("    miniredis client <ADDRESS>");
         println!();

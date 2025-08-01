@@ -47,6 +47,33 @@ impl Server {
         }
     }
 
+    /// Creates a new server from command line arguments.
+    ///
+    /// # Arguments
+    ///
+    /// * `args` - The command line arguments.
+    ///
+    /// # Returns
+    ///
+    /// A new server.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use miniredis::server::Server;
+    ///
+    /// let server = Server::from_args(&["miniredis".to_string(), "127.0.0.1:6379".to_string()]);
+    /// server.run();
+    /// ```
+    pub fn from_args(args: &[String]) -> Self {
+        let address = if args.len() > 1 {
+            &args[1]
+        } else {
+            "127.0.0.1:6379"
+        };
+        Self::new(address)
+    }
+
     /// Runs the server.
     ///
     /// Run starts the server and listens for client connections.
@@ -85,6 +112,31 @@ impl Server {
             thread::spawn(move || Self::handle_client(stream, store));
         }
         Ok(())
+    }
+
+    /// Prints the help message.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use miniredis::server::Server;
+    ///
+    /// Server::print_help();
+    /// ```
+    pub fn print_help() {
+        println!("MiniRedis Server");
+        println!();
+        println!("Starts the MiniRedis server and listens for client connections.");
+        println!();
+        println!("USAGE:");
+        println!("    miniredis server <ADDRESS>");
+        println!();
+        println!("ARGS:");
+        println!("    <ADDRESS>    The address to listen on [default: 127.0.0.1:6379]");
+        println!();
+        println!("EXAMPLES:");
+        println!("    miniredis server 127.0.0.1:6379");
+        println!("    miniredis server --help");
     }
 
     /// Handles a client connection.
