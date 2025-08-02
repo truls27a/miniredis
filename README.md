@@ -4,6 +4,8 @@ MiniRedis is a mini version of Redis, a key value store. It features two binarie
 
 ## Demo
 
+![Demo](assets/demo.gif)
+
 ## Installation
 
 **Prerequisites:**
