@@ -147,7 +147,7 @@ impl Client {
         println!("Connects to a MiniRedis server and sends commands to it.");
         println!();
         println!("USAGE:");
-        println!("    miniredis client <ADDRESS>");
+        println!("    miniredis-client <ADDRESS>");
         println!();
         println!("ARGS:");
         println!(
@@ -155,8 +155,8 @@ impl Client {
         );
         println!();
         println!("EXAMPLES:");
-        println!("    miniredis client 127.0.0.1:6379");
-        println!("    miniredis client --help");
+        println!("    miniredis-client 127.0.0.1:6379");
+        println!("    miniredis-client --help");
         println!();
         println!("COMMANDS IN THE CLIENT:");
         println!("    GET <KEY>             Get the value of a key");
