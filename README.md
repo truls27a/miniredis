@@ -2,6 +2,8 @@
 
 MiniRedis is a mini version of Redis, a key value store. It features two binaries, a server and a client. The server binary starts up a server that accepts GET, SET, and DEL operations. The client binary starts up a client that reads operation commands from the user through the terminal, sends it to the server, and prints out the result.
 
+## Demo
+
 ## Installation
 
 **Prerequisites:**
@@ -26,13 +28,13 @@ cargo build --release
 3. Run the server:
 
 ```bash
-cargo run --bin server
+cargo run --bin miniredis-server
 ```
 
 4. In another terminal, run the client:
 
 ```bash
-cargo run --bin client
+cargo run --bin miniredis-client
 ```
 
 **Alternative - Install from source:**
@@ -41,7 +43,7 @@ cargo run --bin client
 cargo install --path .
 ```
 
-This will install the binaries to your Cargo bin directory.
+This will install the `miniredis-server` and `miniredis-client` binaries to your Cargo bin directory.
 
 ## Usage
 
