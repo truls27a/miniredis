@@ -1,6 +1,10 @@
 use miniredis::server::Server;
 use std::env;
 
+/// Runs the server.
+///
+/// Run gets the environment variables, checks if the user wants to see the help message,
+/// and then creates a server from the arguments and runs it.
 fn main() {
     let args: Vec<String> = env::args().collect();
 
