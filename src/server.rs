@@ -144,6 +144,11 @@ impl Server {
     /// handle_client reads commands from a stream, parses them,
     /// executes them, and writes the responses back to the stream.
     ///
+    /// # Arguments
+    ///
+    /// * `stream` - The client stream.
+    /// * `store` - The shared key-value store.
+    ///
     /// # Returns
     ///
     /// A result indicating whether the client was handled successfully.
@@ -151,11 +156,6 @@ impl Server {
     /// # Errors
     ///
     /// If the stream is not readable, writable, or closed, it will return an error.
-    ///
-    /// # Arguments
-    ///
-    /// * `stream` - The client stream.
-    /// * `store` - The shared key-value store.
     fn handle_client(mut stream: TcpStream, store: Arc<KVStore>) -> Result<(), MiniRedisError> {
         let mut reader = BufReader::new(
             stream
