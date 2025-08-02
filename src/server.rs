@@ -9,6 +9,9 @@ use std::{
 
 /// A server that listens for client connections and handles requests.
 ///
+/// The server is responsible for accepting client connections,
+/// parsing commands, executing them, and writing the responses back to the client.
+///
 /// # Examples
 ///
 /// ```rust,no_run

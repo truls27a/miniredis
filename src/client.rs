@@ -4,6 +4,10 @@ use std::net::TcpStream;
 
 /// A client that connects to a server and sends requests.
 ///
+/// The client is responsible for connecting to the server,
+/// reading input from the user, sending it to the server,
+/// and printing the response back to the user.
+///
 /// # Examples
 ///
 /// ```rust
